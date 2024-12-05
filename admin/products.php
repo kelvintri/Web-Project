@@ -1,5 +1,6 @@
 <?php
 require_once '../includes/functions.php';
+require_once '../config/config.php';
 
 // Check if user is logged in and is admin
 if (!isLoggedIn() || !isAdmin()) {
@@ -80,7 +81,7 @@ $categories = getAllCategories();
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <?php if ($product['image_url']): ?>
-                                <img src="<?php echo htmlspecialchars($product['image_url']); ?>" 
+                                <img src="../<?php echo htmlspecialchars($product['image_url']); ?>" 
                                      alt="<?php echo htmlspecialchars($product['name']); ?>"
                                      class="h-10 w-10 object-cover rounded">
                             <?php else: ?>
@@ -91,7 +92,7 @@ $categories = getAllCategories();
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap"><?php echo htmlspecialchars($product['name']); ?></td>
                         <td class="px-6 py-4 whitespace-nowrap"><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></td>
-                        <td class="px-6 py-4 whitespace-nowrap">$<?php echo number_format($product['price'], 2); ?></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><?php echo CURRENCY_SYMBOL; ?> <?php echo number_format($product['price'], 0, ',', '.'); ?></td>
                         <td class="px-6 py-4 whitespace-nowrap"><?php echo $product['stock']; ?></td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <a href="product_form.php?id=<?php echo $product['id']; ?>" 
