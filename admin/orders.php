@@ -47,6 +47,21 @@ try {
     $orders = [];
     $error = 'Error fetching orders';
 }
+
+// Update the status options array
+$order_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+
+// Update the status colors in the table
+function getStatusClass($status) {
+    return match($status) {
+        'pending' => 'bg-yellow-100 text-yellow-800',
+        'processing' => 'bg-blue-100 text-blue-800',
+        'shipped' => 'bg-indigo-100 text-indigo-800',
+        'delivered' => 'bg-green-100 text-green-800',
+        'cancelled' => 'bg-red-100 text-red-800',
+        default => 'bg-gray-100 text-gray-800'
+    };
+}
 ?>
 
 <!DOCTYPE html>
@@ -102,18 +117,17 @@ try {
                             <form method="POST" class="flex items-center space-x-2">
                                 <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
                                 <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                <select name="status" class="text-sm border-gray-300 rounded focus:outline-none focus:border-blue-500">
-                                    <?php 
-                                    $statuses = ['pending', 'processing', 'completed', 'cancelled'];
-                                    foreach ($statuses as $status):
-                                    ?>
+                                <select name="status" class="text-sm border-gray-300 rounded focus:outline-none focus:border-blue-500 
+                                        <?php echo getStatusClass($order['status']); ?>">
+                                    <?php foreach ($order_statuses as $status): ?>
                                         <option value="<?php echo $status; ?>" 
                                                 <?php echo $order['status'] === $status ? 'selected' : ''; ?>>
                                             <?php echo ucfirst($status); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <button type="submit" name="update_status" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                <button type="submit" name="update_status" 
+                                        class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
                                     Update
                                 </button>
                             </form>

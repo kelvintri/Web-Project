@@ -143,7 +143,9 @@ $shipping = 20000; // Rp 20.000
             <div class="grid gap-3 text-sm">
                 <div>
                     <span class="text-gray-600">Status:</span>
-                    <span class="ml-2 capitalize"><?php echo htmlspecialchars($order['status']); ?></span>
+                    <span class="ml-2 px-2 py-1 rounded text-sm <?php echo getStatusClass($order['status']); ?>">
+                        <?php echo ucfirst($order['status']); ?>
+                    </span>
                 </div>
                 <div>
                     <span class="text-gray-600">Order Date:</span>
