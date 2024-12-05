@@ -83,6 +83,9 @@ require_once __DIR__ . '/../../config/config.php';
                             </button>
                             <!-- Dropdown menu -->
                             <div class="hidden group-hover:block absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                <a href="customer/profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Profile Settings
+                                </a>
                                 <a href="customer/manage_address.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     Manage Addresses
                                 </a>
