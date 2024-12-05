@@ -111,8 +111,12 @@ if (isset($_GET['edit'])) {
     }
 }
 
-// Get all products with their categories
-$products = getAllProducts();
+// Add this near the top of the file, after getting $products and $categories
+$search = isset($_GET['search']) ? sanitizeInput($_GET['search']) : '';
+$category_filter = isset($_GET['category']) ? (int)$_GET['category'] : '';
+
+// Modify the getAllProducts function call to include search and filter
+$products = getAllProducts($search, $category_filter);
 $categories = getAllCategories();
 ?>
 
@@ -147,54 +151,99 @@ $categories = getAllCategories();
             </div>
         <?php endif; ?>
 
-        <div class="bg-white rounded-lg shadow-md overflow-x-auto">
-            <table class="min-w-full">
-                <thead>
-                    <tr class="bg-gray-50">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <?php foreach ($products as $product): ?>
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <?php if ($product['image_url']): ?>
-                                <img src="../<?php echo htmlspecialchars($product['image_url']); ?>" 
-                                     alt="<?php echo htmlspecialchars($product['name']); ?>"
-                                     class="h-10 w-10 object-cover rounded">
-                            <?php else: ?>
-                                <div class="h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
-                                    <span class="text-gray-500 text-xs">No image</span>
-                                </div>
-                            <?php endif; ?>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap"><?php echo htmlspecialchars($product['name']); ?></td>
-                        <td class="px-6 py-4 whitespace-nowrap"><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></td>
-                        <td class="px-6 py-4 whitespace-nowrap"><?php echo CURRENCY_SYMBOL; ?> <?php echo number_format($product['price'], 0, ',', '.'); ?></td>
-                        <td class="px-6 py-4 whitespace-nowrap"><?php echo $product['stock']; ?></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button onclick="editProduct(<?php echo $product['id']; ?>)" 
-                                    class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                            <form action="products.php" method="POST" class="inline">
-                                <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
-                                <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
-                                <button type="submit" name="delete_product" 
-                                        class="text-red-600 hover:text-red-900"
-                                        onclick="return confirm('Are you sure you want to delete this product?')">
-                                    Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <!-- Search and Filter Section -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <form action="products.php" method="GET" class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search Products</label>
+                    <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>"
+                           placeholder="Search by name or description"
+                           class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="md:w-48">
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Filter by Category</label>
+                    <select id="category" name="category"
+                            class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500">
+                        <option value="">All Categories</option>
+                        <?php foreach ($categories as $category): ?>
+                            <option value="<?php echo $category['id']; ?>" 
+                                    <?php echo $category_filter == $category['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($category['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Search
+                    </button>
+                    <?php if ($search || $category_filter): ?>
+                        <a href="products.php" class="ml-2 text-gray-600 hover:text-gray-800 flex items-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Clear
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </form>
         </div>
+
+        <?php if (empty($products)): ?>
+            <div class="bg-gray-50 rounded-lg p-8 text-center">
+                <p class="text-gray-600">No products found<?php echo $search ? ' for "' . htmlspecialchars($search) . '"' : ''; ?></p>
+            </div>
+        <?php else: ?>
+            <!-- Existing table code here -->
+            <div class="bg-white rounded-lg shadow-md overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php foreach ($products as $product): ?>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <?php if ($product['image_url']): ?>
+                                    <img src="../<?php echo htmlspecialchars($product['image_url']); ?>" 
+                                         alt="<?php echo htmlspecialchars($product['name']); ?>"
+                                         class="h-10 w-10 object-cover rounded">
+                                <?php else: ?>
+                                    <div class="h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
+                                        <span class="text-gray-500 text-xs">No image</span>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap"><?php echo htmlspecialchars($product['name']); ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap"><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap"><?php echo CURRENCY_SYMBOL; ?> <?php echo number_format($product['price'], 0, ',', '.'); ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap"><?php echo $product['stock']; ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button onclick="editProduct(<?php echo $product['id']; ?>)" 
+                                        class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                                <form action="products.php" method="POST" class="inline">
+                                    <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
+                                    <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
+                                    <button type="submit" name="delete_product" 
+                                            class="text-red-600 hover:text-red-900"
+                                            onclick="return confirm('Are you sure you want to delete this product?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- Modal -->
@@ -329,6 +378,26 @@ $categories = getAllCategories();
         if (event.key === 'Escape') {
             closeModal();
         }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchForm = document.querySelector('form[action="products.php"]');
+        const searchInput = document.getElementById('search');
+        const categorySelect = document.getElementById('category');
+        let searchTimeout;
+
+        // Handle search input with debounce
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchForm.submit();
+            }, 500);
+        });
+
+        // Handle category change
+        categorySelect.addEventListener('change', function() {
+            searchForm.submit();
+        });
     });
     </script>
 </body>

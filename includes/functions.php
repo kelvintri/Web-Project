@@ -52,10 +52,31 @@ function isAdmin() {
 }
 
 // Product functions
-function getAllProducts() {
+function getAllProducts($search = '', $category_filter = '') {
     global $pdo;
+    
+    $sql = "SELECT p.*, c.name as category_name 
+            FROM products p 
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE 1=1";
+    $params = [];
+    
+    if ($search) {
+        $sql .= " AND (p.name LIKE ? OR p.description LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+    
+    if ($category_filter) {
+        $sql .= " AND p.category_id = ?";
+        $params[] = $category_filter;
+    }
+    
+    $sql .= " ORDER BY p.name ASC";
+    
     try {
-        $stmt = $pdo->query("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id");
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     } catch(PDOException $e) {
         return [];
