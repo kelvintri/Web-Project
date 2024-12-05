@@ -429,4 +429,9 @@ function generateCSRFToken() {
 function validateCSRFToken($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
+
+function formatPrice($price) {
+    return 'Rp ' . number_format($price, 0, ',', '.');
+}
+
 ?>

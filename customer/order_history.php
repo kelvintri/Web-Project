@@ -21,7 +21,7 @@ if ($status_filter) {
 }
 
 $page_title = "Order History";
-include '../includes/header.php';
+require_once '../includes/layout/header.php';
 ?>
 
 <div class="container mx-auto px-4 py-8">
@@ -137,4 +137,4 @@ include '../includes/header.php';
     <?php endif; ?>
 </div>
 
-<?php include '../includes/footer.php'; ?>
+<?php include '../includes/layout/footer.php'; ?>

@@ -47,23 +47,6 @@ try {
     $orders = [];
     $error = 'Error fetching orders';
 }
-
-// Function to get order items
-function getOrderItems($order_id) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            SELECT oi.*, p.name as product_name
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = ?
-        ");
-        $stmt->execute([$order_id]);
-        return $stmt->fetchAll();
-    } catch(PDOException $e) {
-        return [];
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -82,13 +65,13 @@ function getOrderItems($order_id) {
 
         <?php if ($success): ?>
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                <?php echo htmlspecialchars($success); ?>
+                <?php echo $success; ?>
             </div>
         <?php endif; ?>
 
         <?php if ($error): ?>
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <?php echo htmlspecialchars($error); ?>
+                <?php echo $error; ?>
             </div>
         <?php endif; ?>
 
@@ -114,14 +97,12 @@ function getOrderItems($order_id) {
                             <div class="text-sm text-gray-500"><?php echo htmlspecialchars($order['email']); ?></div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap"><?php echo $order['item_count']; ?> items</td>
-                        <td class="px-6 py-4 whitespace-nowrap">$<?php echo number_format($order['total_amount'], 2); ?></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><?php echo formatPrice($order['total_amount']); ?></td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <form action="orders.php" method="POST" class="flex items-center space-x-2">
+                            <form method="POST" class="flex items-center space-x-2">
                                 <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
                                 <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                <select name="status" 
-                                        class="text-sm border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                        onchange="this.form.submit()">
+                                <select name="status" class="text-sm border-gray-300 rounded focus:outline-none focus:border-blue-500">
                                     <?php 
                                     $statuses = ['pending', 'processing', 'completed', 'cancelled'];
                                     foreach ($statuses as $status):
@@ -132,7 +113,7 @@ function getOrderItems($order_id) {
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <button type="submit" name="update_status" class="text-blue-600 hover:text-blue-900">
+                                <button type="submit" name="update_status" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
                                     Update
                                 </button>
                             </form>
@@ -141,38 +122,10 @@ function getOrderItems($order_id) {
                             <?php echo date('M d, Y H:i', strtotime($order['created_at'])); ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button onclick="toggleOrderDetails(<?php echo $order['id']; ?>)"
-                                    class="text-blue-600 hover:text-blue-900">
+                            <button type="button" class="text-blue-600 hover:text-blue-900 view-details" 
+                                    data-order-id="<?php echo $order['id']; ?>">
                                 View Details
                             </button>
-                        </td>
-                    </tr>
-                    <tr id="order-details-<?php echo $order['id']; ?>" class="hidden bg-gray-50">
-                        <td colspan="7" class="px-6 py-4">
-                            <div class="text-sm">
-                                <h4 class="font-medium mb-2">Order Items:</h4>
-                                <ul class="list-disc list-inside mb-4">
-                                    <?php foreach (getOrderItems($order['id']) as $item): ?>
-                                        <li>
-                                            <?php echo htmlspecialchars($item['product_name']); ?> 
-                                            (<?php echo $item['quantity']; ?> x $<?php echo number_format($item['price'], 2); ?>)
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                                
-                                <h4 class="font-medium mb-2">Shipping Information:</h4>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p><strong>Name:</strong> <?php echo htmlspecialchars($order['shipping_name']); ?></p>
-                                        <p><strong>Phone:</strong> <?php echo htmlspecialchars($order['shipping_phone']); ?></p>
-                                        <p><strong>Address:</strong> <?php echo htmlspecialchars($order['shipping_address']); ?></p>
-                                    </div>
-                                    <div>
-                                        <p><strong>City:</strong> <?php echo htmlspecialchars($order['shipping_city']); ?></p>
-                                        <p><strong>Postal Code:</strong> <?php echo htmlspecialchars($order['shipping_postal_code']); ?></p>
-                                    </div>
-                                </div>
-                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -181,11 +134,82 @@ function getOrderItems($order_id) {
         </div>
     </div>
 
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 class="text-lg font-semibold">Order Details</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="modalContent" class="p-4">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function toggleOrderDetails(orderId) {
-            const detailsRow = document.getElementById(`order-details-${orderId}`);
-            detailsRow.classList.toggle('hidden');
+    function openModal(orderId) {
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modalContent');
+        
+        // Show loading spinner
+        modalContent.innerHTML = `
+            <div class="flex justify-center items-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+        
+        // Fetch order details
+        fetch('get_order_details.php?id=' + orderId)
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+            })
+            .catch(error => {
+                modalContent.innerHTML = `
+                    <div class="text-red-500 text-center py-4">
+                        Error loading order details. Please try again.
+                    </div>
+                `;
+            });
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('modal');
+        modal.classList.add('hidden');
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('modal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeModal();
         }
+    });
+
+    // Add click handlers to view details buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.view-details').forEach(button => {
+            button.addEventListener('click', function() {
+                const orderId = this.getAttribute('data-order-id');
+                openModal(orderId);
+            });
+        });
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
     </script>
 </body>
 </html>
