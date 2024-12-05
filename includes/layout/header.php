@@ -7,36 +7,44 @@ require_once __DIR__ . '/../../config/config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>E-Commerce Store</title>
+    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Gaming Gear Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Add Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <base href="<?php echo BASE_URL; ?>/">
 </head>
 <body class="bg-gray-50">
-    <!-- Navigation -->
     <nav class="bg-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
                 <div class="flex">
                     <!-- Logo -->
                     <div class="flex-shrink-0 flex items-center">
-                        <a href="index.php" class="text-xl font-bold text-gray-800">E-Store</a>
+                        <a href="index.php" class="text-xl font-bold text-gray-800">Gaming Gear</a>
                     </div>
                     <!-- Navigation Links -->
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
                         <a href="index.php" class="<?php echo !isset($active_page) || $active_page === 'home' ? 'border-blue-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'; ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Home
                         </a>
-                        <?php
-                        // Get all categories for the navigation
-                        $categories = getAllCategories();
-                        foreach ($categories as $category): ?>
-                            <a href="index.php?category=<?php echo urlencode($category['id']); ?>" 
-                               class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                <?php echo htmlspecialchars($category['name']); ?>
-                            </a>
-                        <?php endforeach; ?>
+                        <!-- Categories Dropdown -->
+                        <div class="relative group inline-flex items-center">
+                            <button class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Categories <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                            </button>
+                            <div class="hidden group-hover:block absolute left-0 top-full mt-1 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                <a href="index.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    All Products
+                                </a>
+                                <?php
+                                $categories = getAllCategories();
+                                foreach ($categories as $category): ?>
+                                    <a href="index.php?category=<?php echo urlencode($category['id']); ?>" 
+                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <?php echo htmlspecialchars($category['name']); ?>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <!-- Search -->
@@ -61,7 +69,7 @@ require_once __DIR__ . '/../../config/config.php';
                         <a href="cart.php" class="p-2 text-gray-400 hover:text-gray-500 relative">
                             <i class="fas fa-shopping-cart"></i>
                             <?php
-                            $cart_count = 0; // We'll implement this later
+                            $cart_count = getCartItemCount($_SESSION['user_id']);
                             if ($cart_count > 0): ?>
                                 <span class="absolute top-0 right-0 -mt-1 -mr-1 px-2 py-1 text-xs bg-red-500 text-white rounded-full">
                                     <?php echo $cart_count; ?>
@@ -74,24 +82,21 @@ require_once __DIR__ . '/../../config/config.php';
                                 <i class="fas fa-user"></i>
                             </button>
                             <!-- Dropdown menu -->
-                            <div class="hidden group-hover:block absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5">
-                                <a href="customer/profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    My Profile
+                            <div class="hidden group-hover:block absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                <a href="customer/manage_address.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Manage Addresses
                                 </a>
-                                <a href="customer/orders.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    My Orders
+                                <a href="customer/order_history.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Order History
                                 </a>
                                 <?php if (isAdmin()): ?>
                                     <a href="admin/dashboard.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                         Admin Dashboard
                                     </a>
                                 <?php endif; ?>
-                                <form action="logout.php" method="POST" class="block">
-                                    <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
-                                    <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        Logout
-                                    </button>
-                                </form>
+                                <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Logout
+                                </a>
                             </div>
                         </div>
                     <?php else: ?>
