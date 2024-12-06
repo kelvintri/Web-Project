@@ -48,20 +48,7 @@ try {
     $error = 'Error fetching orders';
 }
 
-// Update the status options array
-$order_statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
-
-// Update the status colors in the table
-function getStatusClass($status) {
-    return match($status) {
-        'pending' => 'bg-yellow-100 text-yellow-800',
-        'processing' => 'bg-blue-100 text-blue-800',
-        'shipped' => 'bg-indigo-100 text-indigo-800',
-        'delivered' => 'bg-green-100 text-green-800',
-        'cancelled' => 'bg-red-100 text-red-800',
-        default => 'bg-gray-100 text-gray-800'
-    };
-}
+$page_title = "Manage Orders";
 ?>
 
 <!DOCTYPE html>
@@ -114,30 +101,24 @@ function getStatusClass($status) {
                         <td class="px-6 py-4 whitespace-nowrap"><?php echo $order['item_count']; ?> items</td>
                         <td class="px-6 py-4 whitespace-nowrap"><?php echo formatPrice($order['total_amount']); ?></td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <form method="POST" class="flex items-center space-x-2">
-                                <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
-                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                <select name="status" class="text-sm border-gray-300 rounded focus:outline-none focus:border-blue-500 
-                                        <?php echo getStatusClass($order['status']); ?>">
-                                    <?php foreach ($order_statuses as $status): ?>
-                                        <option value="<?php echo $status; ?>" 
-                                                <?php echo $order['status'] === $status ? 'selected' : ''; ?>>
-                                            <?php echo ucfirst($status); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <button type="submit" name="update_status" 
-                                        class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                    Update
-                                </button>
-                            </form>
+                            <span class="px-3 py-1 rounded-full text-xs font-medium
+                                <?php echo match($order['status']) {
+                                    'pending' => 'bg-yellow-100 text-yellow-800',
+                                    'processing' => 'bg-blue-100 text-blue-800',
+                                    'shipped' => 'bg-indigo-100 text-indigo-800',
+                                    'delivered' => 'bg-green-100 text-green-800',
+                                    'cancelled' => 'bg-red-100 text-red-800',
+                                    default => 'bg-gray-100 text-gray-800'
+                                }; ?>">
+                                <?php echo ucfirst($order['status']); ?>
+                            </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <?php echo date('M d, Y H:i', strtotime($order['created_at'])); ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button type="button" class="text-blue-600 hover:text-blue-900 view-details" 
-                                    data-order-id="<?php echo $order['id']; ?>">
+                            <button onclick="showOrderDetails(<?php echo $order['id']; ?>)" 
+                                    class="text-blue-600 hover:text-blue-800">
                                 View Details
                             </button>
                         </td>
@@ -148,19 +129,17 @@ function getStatusClass($status) {
         </div>
     </div>
 
-    <!-- Modal -->
-    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center p-4 border-b">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
                     <h3 class="text-lg font-semibold">Order Details</h3>
                     <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div id="modalContent" class="p-4">
+                <div id="modalContent" class="relative">
                     <!-- Content will be loaded here -->
                 </div>
             </div>
@@ -168,28 +147,27 @@ function getStatusClass($status) {
     </div>
 
     <script>
-    function openModal(orderId) {
-        const modal = document.getElementById('modal');
+    function showOrderDetails(orderId) {
+        const modal = document.getElementById('orderModal');
         const modalContent = document.getElementById('modalContent');
         
-        // Show loading spinner
+        // Show loading state
         modalContent.innerHTML = `
-            <div class="flex justify-center items-center py-8">
+            <div class="flex justify-center items-center p-8">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
         `;
-        
         modal.classList.remove('hidden');
         
         // Fetch order details
-        fetch('get_order_details.php?id=' + orderId)
+        fetch(`get_order_details.php?id=${orderId}`)
             .then(response => response.text())
             .then(html => {
                 modalContent.innerHTML = html;
             })
             .catch(error => {
                 modalContent.innerHTML = `
-                    <div class="text-red-500 text-center py-4">
+                    <div class="p-6 text-center text-red-500">
                         Error loading order details. Please try again.
                     </div>
                 `;
@@ -197,25 +175,14 @@ function getStatusClass($status) {
     }
 
     function closeModal() {
-        const modal = document.getElementById('modal');
-        modal.classList.add('hidden');
+        document.getElementById('orderModal').classList.add('hidden');
     }
 
     // Close modal when clicking outside
-    document.getElementById('modal').addEventListener('click', function(event) {
+    document.getElementById('orderModal').addEventListener('click', function(event) {
         if (event.target === this) {
             closeModal();
         }
-    });
-
-    // Add click handlers to view details buttons
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.view-details').forEach(button => {
-            button.addEventListener('click', function() {
-                const orderId = this.getAttribute('data-order-id');
-                openModal(orderId);
-            });
-        });
     });
 
     // Close modal with Escape key
