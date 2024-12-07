@@ -334,7 +334,7 @@ $page_title = "Manage Orders";
 
                 <div class="mt-6 border-t pt-4">
                     <h4 class="text-lg font-semibold mb-2">Update Status</h4>
-                    <form method="POST" class="flex items-center gap-4">
+                    <form method="POST" class="flex items-center gap-4" onsubmit="closeModal()">
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="order_id" value="${order.id}">
                         <select name="status" class="rounded border-gray-300 shadow-sm">
@@ -361,14 +361,44 @@ $page_title = "Manage Orders";
         modal.classList.add('hidden');
     }
 
-    // Close modal when clicking outside
     document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('orderModal').addEventListener('click', function(event) {
-            if (event.target === this) {
+        // Initialize date pickers
+        flatpickr(".datepicker", {
+            dateFormat: "Y-m-d",
+            allowInput: true
+        });
+
+        // Initialize select all functionality
+        document.getElementById('selectAll').addEventListener('change', function() {
+            document.querySelectorAll('.order-checkbox').forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+
+        // Modal click event handling
+        const modal = document.getElementById('orderModal');
+        const modalContent = modal.querySelector('.bg-white');
+        
+        modal.addEventListener('click', function(event) {
+            // Close only if clicking the backdrop (modal background)
+            if (event.target === modal) {
                 closeModal();
             }
         });
+
+        // Prevent clicks inside modal content from closing the modal
+        modalContent.addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
     });
+
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        selectAll.checked = !selectAll.checked;
+        document.querySelectorAll('.order-checkbox').forEach(checkbox => {
+            checkbox.checked = selectAll.checked;
+        });
+    }
     </script>
 </head>
 <body class="bg-gray-100">
@@ -548,7 +578,7 @@ $page_title = "Manage Orders";
                                 <?php echo date('M d, Y H:i', strtotime($order['created_at'])); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button onclick='showOrderDetails(<?php echo json_encode($order); ?>, <?php echo json_encode($order["order_items"]); ?>)'
+                                <button type="button" onclick='event.preventDefault(); event.stopPropagation(); showOrderDetails(<?php echo json_encode($order); ?>, <?php echo json_encode($order["order_items"]); ?>)'
                                         class="text-blue-600 hover:text-blue-800">
                                     View Details
                                 </button>
@@ -621,6 +651,22 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.order-checkbox').forEach(checkbox => {
             checkbox.checked = this.checked;
         });
+    });
+
+    // Modal click event handling
+    const modal = document.getElementById('orderModal');
+    const modalContent = modal.querySelector('.bg-white');
+    
+    modal.addEventListener('click', function(event) {
+        // Close only if clicking the backdrop (modal background)
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Prevent clicks inside modal content from closing the modal
+    modalContent.addEventListener('click', function(event) {
+        event.stopPropagation();
     });
 });
 
