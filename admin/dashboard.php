@@ -58,6 +58,34 @@ try {
     ");
     $total_revenue = $stmt->fetch()['total_revenue'] ?? 0;
 
+    // Customer statistics
+    $stmt = $pdo->query("
+        SELECT 
+            COUNT(DISTINCT user_id) as total_customers,
+            AVG(total_amount) as avg_order_value
+        FROM orders
+        WHERE status != 'cancelled'
+    ");
+    $customer_stats = $stmt->fetch();
+
+    // Top selling products
+    $stmt = $pdo->query("
+        SELECT 
+            p.id,
+            p.name,
+            p.image_url,
+            SUM(oi.quantity) as total_sold,
+            SUM(oi.quantity * oi.price) as total_revenue
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.status != 'cancelled'
+        GROUP BY p.id
+        ORDER BY total_sold DESC
+        LIMIT 5
+    ");
+    $top_products = $stmt->fetchAll();
+
 } catch(PDOException $e) {
     error_log("Dashboard error: " . $e->getMessage());
 }
@@ -70,48 +98,85 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - E-Commerce Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
 </head>
 <body class="bg-gray-100">
     <?php include 'includes/admin_header.php'; ?>
 
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8">Dashboard</h1>
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold">Dashboard</h1>
+            <div class="text-sm text-gray-500">Last updated: <?php echo date('M d, Y H:i'); ?></div>
+        </div>
 
         <!-- Stats Overview -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Total Revenue -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-                <h3 class="text-xl font-semibold mb-2">Total Revenue</h3>
-                <p class="text-3xl font-bold text-green-500"><?php echo formatPrice($total_revenue); ?></p>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Total Revenue</h3>
+                        <p class="text-3xl font-bold text-green-500"><?php echo formatPrice($total_revenue); ?></p>
+                    </div>
+                    <div class="text-green-500">
+                        <i class="fas fa-chart-line text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Avg. Order: <?php echo formatPrice($customer_stats['avg_order_value']); ?></p>
             </div>
 
             <!-- Total Orders -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-                <h3 class="text-xl font-semibold mb-2">Total Orders</h3>
-                <p class="text-3xl font-bold text-blue-500"><?php echo $orders_count; ?></p>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Total Orders</h3>
+                        <p class="text-3xl font-bold text-blue-500"><?php echo $orders_count; ?></p>
+                    </div>
+                    <div class="text-blue-500">
+                        <i class="fas fa-shopping-cart text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">From <?php echo $customer_stats['total_customers']; ?> customers</p>
                 <a href="orders.php" class="text-blue-500 hover:text-blue-600 mt-2 inline-block">View Orders →</a>
             </div>
 
             <!-- Products -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
-                <h3 class="text-xl font-semibold mb-2">Total Products</h3>
-                <p class="text-3xl font-bold text-purple-500"><?php echo $products_count; ?></p>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Total Products</h3>
+                        <p class="text-3xl font-bold text-purple-500"><?php echo $products_count; ?></p>
+                    </div>
+                    <div class="text-purple-500">
+                        <i class="fas fa-box text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><?php echo count($low_stock_products); ?> low stock items</p>
                 <a href="products.php" class="text-purple-500 hover:text-purple-600 mt-2 inline-block">Manage Products →</a>
             </div>
 
             <!-- Categories -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
-                <h3 class="text-xl font-semibold mb-2">Categories</h3>
-                <p class="text-3xl font-bold text-yellow-500"><?php echo $categories_count; ?></p>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Categories</h3>
+                        <p class="text-3xl font-bold text-yellow-500"><?php echo $categories_count; ?></p>
+                    </div>
+                    <div class="text-yellow-500">
+                        <i class="fas fa-tags text-2xl"></i>
+                    </div>
+                </div>
                 <a href="categories.php" class="text-yellow-500 hover:text-yellow-600 mt-2 inline-block">Manage Categories →</a>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Recent Orders -->
+            <!-- Recent Orders with Quick Actions -->
             <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">Recent Orders</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Recent Orders</h2>
+                    <a href="orders.php" class="text-blue-500 hover:text-blue-600">View All →</a>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full">
                         <thead>
@@ -120,13 +185,17 @@ try {
                                 <th class="px-4 py-2 text-left">Customer</th>
                                 <th class="px-4 py-2 text-left">Amount</th>
                                 <th class="px-4 py-2 text-left">Status</th>
+                                <th class="px-4 py-2 text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($recent_orders as $order): ?>
-                            <tr class="border-t">
+                            <tr class="border-t hover:bg-gray-50">
                                 <td class="px-4 py-2">#<?php echo $order['id']; ?></td>
-                                <td class="px-4 py-2"><?php echo htmlspecialchars($order['username']); ?></td>
+                                <td class="px-4 py-2">
+                                    <div><?php echo htmlspecialchars($order['username']); ?></div>
+                                    <div class="text-sm text-gray-500"><?php echo htmlspecialchars($order['email']); ?></div>
+                                </td>
                                 <td class="px-4 py-2"><?php echo formatPrice($order['total_amount']); ?></td>
                                 <td class="px-4 py-2">
                                     <span class="px-2 py-1 rounded text-sm 
@@ -141,19 +210,31 @@ try {
                                         <?php echo ucfirst($order['status']); ?>
                                     </span>
                                 </td>
+                                <td class="px-4 py-2">
+                                    <button onclick="viewOrder(<?php echo $order['id']; ?>)" 
+                                            class="text-blue-500 hover:text-blue-600 mr-2">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button onclick="updateOrderStatus(<?php echo $order['id']; ?>)" 
+                                            class="text-green-500 hover:text-green-600">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
-                <a href="orders.php" class="text-blue-500 hover:text-blue-600 mt-4 inline-block">View All Orders →</a>
             </div>
 
-            <!-- Low Stock Alert -->
+            <!-- Top Products -->
             <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">Low Stock Alert</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Top Selling Products</h2>
+                    <a href="products.php" class="text-blue-500 hover:text-blue-600">View All →</a>
+                </div>
                 <div class="space-y-4">
-                    <?php foreach ($low_stock_products as $product): ?>
+                    <?php foreach ($top_products as $product): ?>
                     <div class="flex items-center justify-between border-b pb-4">
                         <div class="flex items-center">
                             <?php if ($product['image_url']): ?>
@@ -167,62 +248,15 @@ try {
                             <?php endif; ?>
                             <div class="ml-4">
                                 <h4 class="font-medium"><?php echo htmlspecialchars($product['name']); ?></h4>
-                                <p class="text-sm text-gray-500"><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></p>
+                                <p class="text-sm text-gray-500"><?php echo $product['total_sold']; ?> units sold</p>
                             </div>
                         </div>
                         <div class="text-right">
-                            <p class="font-medium <?php echo $product['stock'] <= 5 ? 'text-red-600' : 'text-yellow-600'; ?>">
-                                <?php echo $product['stock']; ?> in stock
-                            </p>
+                            <p class="font-medium text-green-600"><?php echo formatPrice($product['total_revenue']); ?></p>
                             <button onclick="editProduct(<?php echo $product['id']; ?>)" 
                                     class="text-sm text-blue-500 hover:text-blue-600">
-                                Update Stock
+                                View Details
                             </button>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </div>
-
-        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Orders Chart -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Orders by Status</h2>
-                    <div class="flex items-center gap-4">
-                        <select id="chartType" class="text-sm border border-gray-300 rounded px-2 py-1">
-                            <option value="doughnut">Doughnut</option>
-                            <option value="pie">Pie</option>
-                            <option value="bar">Bar</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="relative" style="height: 300px;">
-                    <canvas id="ordersChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Orders Summary -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold mb-4">Orders Summary</h2>
-                <div class="space-y-4">
-                    <?php foreach ($orders_by_status as $status => $count): ?>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <span class="w-3 h-3 rounded-full mr-2 
-                                <?php echo match($status) {
-                                    'pending' => 'bg-yellow-400',
-                                    'processing' => 'bg-blue-400',
-                                    'completed' => 'bg-green-400',
-                                    'cancelled' => 'bg-red-400',
-                                    default => 'bg-gray-400'
-                                }; ?>"></span>
-                            <span class="capitalize"><?php echo $status; ?></span>
-                        </div>
-                        <div class="font-medium">
-                            <?php echo $count; ?> orders
-                            (<?php echo round(($count / $orders_count) * 100); ?>%)
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -232,68 +266,9 @@ try {
     </div>
 
     <script>
-    let ordersChart = null;
-
-    function createChart(type = 'doughnut') {
-        const ctx = document.getElementById('ordersChart').getContext('2d');
-        
-        // Destroy existing chart if it exists
-        if (ordersChart) {
-            ordersChart.destroy();
-        }
-
-        // Create new chart
-        ordersChart = new Chart(ctx, {
-            type: type,
-            data: {
-                labels: <?php echo json_encode(array_map('ucfirst', array_keys($orders_by_status))); ?>,
-                datasets: [{
-                    data: <?php echo json_encode(array_values($orders_by_status)); ?>,
-                    backgroundColor: [
-                        '#FCD34D', // pending - yellow
-                        '#60A5FA', // processing - blue
-                        '#34D399', // completed - green
-                        '#F87171'  // cancelled - red
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 20
-                        }
-                    }
-                },
-                ...(type === 'bar' ? {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                } : {})
-            }
-        });
-    }
-
-    // Initialize chart
-    createChart('doughnut');
-
-    // Handle chart type change
-    document.getElementById('chartType').addEventListener('change', function() {
-        createChart(this.value);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize any remaining dashboard functionality here
     });
-
-    // Function to redirect to product edit
-    function editProduct(productId) {
-        window.location.href = `products.php?edit=${productId}`;
-    }
     </script>
 </body>
 </html>
